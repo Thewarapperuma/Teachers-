@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="si">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Class Security System - Multi Teacher Platform</title>
+    
+    <!-- PWA Manifest & Theme -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0284c7">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="https://img.icons8.com/color/192/192/classroom.png">
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { getDatabase, ref, set, get, child, onValue } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBearOY9wSoYuxrsXaX5pLYyiIfknaIhOs",
+            authDomain: "class-management-system-dc2c9.firebaseapp.com",
+            databaseURL: "https://class-management-system-dc2c9-default-rtdb.firebaseio.com",
+            projectId: "class-management-system-dc2c9",
+            storageBucket: "class-management-system-dc2c9.firebasestorage.app",
+            messagingSenderId: "488691123337",
+            appId: "1:488691123337:web:f235b473a8e72f261f7258"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        window.db = db;
+        window.dbRef = ref;
+        window.dbSet = set;
+        window.dbGet = get;
+        window.dbChild = child;
+        window.dbOnValue = onValue;
+
+        window.dispatchEvent(new Event('firebase-ready'));
+    </script>
+
+    <style>
+        body {
+            margin: 0; padding: 15px; background-color: #0f172a;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #f8fafc; display: flex; justify-content: center;
+        }
+
+        #splashScreen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #112818; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 9999;
+            border: 10px solid #2d1810; box-sizing: border-box; transition: opacity 0.6s ease;
+        }
+        .board-content { text-align: center; padding: 20px; }
+        .board-title {
+            font-size: 24px; color: #f0fdf4; font-family: 'Courier New', Courier, monospace;
+            font-weight: bold; margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            animation: fadeInOut 1.5s infinite alternate;
+        }
+        .board-subtitle { font-size: 14px; color: #86efac; font-family: 'Courier New', Courier, monospace; }
+        .chalk-icon { font-size: 50px; margin-bottom: 15px; }
+        @keyframes fadeInOut { from { opacity: 0.7; } to { opacity: 1; } }
+
+        #loginOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #0f172a; display: flex; justify-content: center; align-items: center; z-index: 9998;
+        }
+        .login-card {
+            width: 100%; max-width: 380px; background: #1e293b; padding: 25px;
+            border-radius: 16px; border: 1px solid #334155; text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.7);
+        }
+
+        .container {
+            width: 100%; max-width: 500px; background: #1e293b; padding: 20px;
+            border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.7);
+            border: 1px solid #334155; box-sizing: border-box;
+        }
+        .header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+        h2 { color: #38bdf8; margin: 0; font-size: 20px; }
+        .subtitle { font-size: 11px; color: #94a3b8; margin-bottom: 20px; }
+        .section-box {
+            background: #0f172a; padding: 15px; border-radius: 10px;
+            margin-bottom: 15px; border: 1px solid #334155;
+        }
+        label { font-weight: bold; font-size: 12px; color: #cbd5e1; display: block; margin-bottom: 5px; }
+        input, select, textarea {
+            width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #475569;
+            background: #1e293b; color: #fff; border-radius: 6px; box-sizing: border-box; font-size: 14px;
+        }
+        .btn {
+            background-color: #0284c7; color: white; border: none; padding: 10px;
+            width: 100%; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 14px; transition: 0.2s;
+        }
+        .btn:active { transform: scale(0.98); }
+        .btn-success { background-color: #10b981; }
+        .btn-danger { background-color: #ef4444; padding: 5px 10px; font-size: 11px; width: auto; }
+        .btn-logout { background-color: #475569; padding: 5px 10px; font-size: 11px; width: auto; cursor: pointer; border: none; border-radius: 5px; color: #fff;}
+        .btn-whatsapp-group {
+            background-color: #25d366; color: white; margin-top: 10px; font-weight: bold;
+            text-decoration: none; display: block; text-align: center; padding: 12px; border-radius: 6px;
+        }
+        .class-list, .student-list { margin-top: 10px; }
+        .class-card {
+            background: #1e293b; padding: 10px 15px; border-radius: 8px; margin-bottom: 8px;
+            display: flex; justify-content: space-between; align-items: center; border-left: 4px solid #38bdf8; cursor: pointer;
+        }
+        .student-row {
+            background: #1e293b; padding: 10px; border-radius: 6px; margin-bottom: 8px;
+            font-size: 13px; border: 1px solid #334155; display: flex; justify-content: space-between; align-items: center;
+        }
+        .back-btn { background: #475569; margin-bottom: 15px; }
+        textarea {
+            resize: vertical; height: 140px; font-family: monospace; font-size: 12px;
+            background: #161b22; color: #e2e8f0; line-height: 1.4;
+        }
+        .summary-card {
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            border: 1px solid #38bdf8; padding: 15px; border-radius: 12px; text-align: center; margin-bottom: 12px;
+        }
+
+        @keyframes glowGreen {
+            0% { opacity: 0.3; text-shadow: none; }
+            50% { opacity: 1; text-shadow: 0 0 10px #10b981, 0 0 20px #10b981; }
+            100% { opacity: 0.3; text-shadow: none; }
+        }
+        @keyframes glowRed {
+            0% { opacity: 0.3; text-shadow: none; }
+            50% { opacity: 1; text-shadow: 0 0 10px #ef4444, 0 0 20px #ef4444; }
+            100% { opacity: 0.3; text-shadow: none; }
+        }
+        .status-blink-green { color: #10b981; font-weight: bold; animation: glowGreen 1.5s infinite; }
+        .status-blink-red { color: #ef4444; font-weight: bold; animation: glowRed 1.5s infinite; }
+
+        .viewer-nav { display: flex; gap: 5px; margin-bottom: 15px; background: #0f172a; padding: 5px; border-radius: 8px; }
+        .v-tab {
+            flex: 1; padding: 8px; text-align: center; font-size: 12px; font-weight: bold;
+            background: #1e293b; color: #94a3b8; border-radius: 6px; cursor: pointer; border: none;
+        }
+        .v-tab.active { background: #0284c7; color: #fff; }
+    </style>
+</head>
+<body>
+
+<div id="splashScreen">
+    <div class="board-content">
+        <div class="chalk-icon">👨‍🏫 </div>
+        <div class="board-title">Class Security System</div>
+        <div class="board-subtitle">Multi-Teacher Portal Loading...</div>
+    </div>
+</div>
+
+<!-- LOGIN SELECTION OVERLAY -->
+<div id="loginOverlay" style="display: none;">
+    <div class="login-card">
+        <h2>🔒 පන්ති ආරක්ෂිත පිවිසුම</h2>
+        <p style="font-size: 11px; color: #94a3b8; margin-bottom: 15px;">ගුරුවරයා හෝ දෙමාපියා ලෙස ඇතුළු වන්න</p>
+        
+        <div style="display: flex; gap: 5px; margin-bottom: 15px;">
+            <button class="btn" id="tabAdminLogin" onclick="switchLoginMode('admin')">ගුරුවරයා (Admin)</button>
+            <button class="btn" id="tabViewerLogin" style="background:#475569;" onclick="switchLoginMode('viewer')">දෙමාපියා (Viewer)</button>
+        </div>
+
+        <!-- Admin Login Form -->
+        <div id="adminLoginForm">
+            <label>ගුරු හැඳුනුම් නම (Teacher ID):</label>
+            <input type="text" id="teacherIdInput" placeholder="උදා: kamal_maths">
+            
+            <label>මුරපදය (PIN):</label>
+            <input type="password" id="adminPinInput" placeholder="PIN අංකය">
+            
+            <button class="btn btn-success" onclick="verifyAdminLogin()">ගුරුවරයා ලෙස පිවිසෙන්න</button>
+        </div>
+
+        <!-- Viewer Search Form -->
+        <div id="viewerLoginForm" style="display: none;">
+            <label>ගුරු හැඳුනුම් නම (Teacher ID):</label>
+            <input type="text" id="searchTeacherIdInput" placeholder="සෙවිය යුතු Teacher ID එක">
+            
+            <button class="btn btn-success" onclick="verifyViewerLogin()">පන්ති සෙවීම ආරම්භ කරන්න</button>
+        </div>
+
+        <div id="pinError" style="color: #ef4444; font-size: 12px; margin-top: 10px; display: none;">⚠️ වැරදි විස්තරයක්! කරුණාකර පරීක්ෂා කරන්න.</div>
+        
+        <div style="font-size: 10px; color: #64748b; margin-top: 15px; line-height: 1.4;">
+        </div>
+    </div>
+</div>
+
+<div class="container" id="mainContainer" style="display: none;">
+    <div class="header-flex">
+        <h2>📚 පන්ති කළමනාකරු</h2>
+        <button class="btn-logout" onclick="logoutSystem()">🔒 ඉවත් වන්න</button>
+    </div>
+    <div class="subtitle" id="roleSubtitle">පැමිණීම් සහ සාරාංශ මධ්‍යස්ථානය</div>
+
+    <!-- ADMIN VIEW -->
+    <div id="adminMainView" style="display: none;">
+        <div class="section-box" style="border-color: #10b981;">
+            <div style="font-size: 12px; color: #10b981; font-weight: bold; margin-bottom: 5px;">👤 වත්මන් ගුරු ගිණුම: <span id="activeTeacherDisplay" style="color:#fff;"></span></div>
+        </div>
+
+        <div class="section-box">
+            <label>නව පන්තියක් එකතු කරන්න:</label>
+            <input type="text" id="classNameInput" placeholder="උදා: Grade 10 English">
+            <button class="btn" onclick="addClass()">පන්තිය සාදන්න</button>
+        </div>
+
+        <div class="section-box">
+            <label>පවත්නා පන්ති ලැයිස්තුව:</label>
+            <div class="class-list" id="adminClassListContainer">
+                <div style="color: #94a3b8; font-size: 12px; text-align: center;">පූරණය වෙමින් පවතී...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADMIN CLASS DETAIL VIEW -->
+    <div id="adminClassDetailView" style="display: none;">
+        <button class="btn back-btn" onclick="goBackToAdminMain()">⬅️ පන්ති ලැයිස්තුවට ආපසු යන්න</button>
+        
+        <h3 id="adminSelectedClassTitle" style="color: #38bdf8; margin-top: 0; font-size: 16px;">පන්තිය</h3>
+
+        <div class="section-box">
+            <label style="color: #38bdf8; margin-bottom: 8px;">👨‍🏫 පන්ති විස්තර:</label>
+            <label>ගුරුවරයාගේ නම:</label>
+            <input type="text" id="teacherNameInput" placeholder="Mr. John Perera" oninput="updateClassDetails()">
+
+            <label>විෂය / පාඩම:</label>
+            <input type="text" id="subjectInput" placeholder="English Literature" oninput="updateClassDetails()">
+        </div>
+
+        <div class="section-box">
+            <label>දිනය (Date):</label>
+            <input type="date" id="attendanceDate" onchange="loadAttendanceForDate()">
+
+            <label>නව සිසුවෙකුගේ නම:</label>
+            <input type="text" id="studentNameInput" placeholder="Kasun Perera">
+
+            <label>දෙමාපියන්ගේ දුරකථන අංකය:</label>
+            <input type="text" id="parentPhoneInput" placeholder="0771234567">
+
+            <button class="btn btn-success" onclick="addStudent()">සිසුවා එකතු කරන්න</button>
+        </div>
+
+        <div class="section-box">
+            <label>සිසුන්ගේ පැමිණීම ලකුණු කිරීම (අද දිනට):</label>
+            <div class="student-list" id="adminStudentListContainer">
+                <div style="color: #94a3b8; font-size: 12px; text-align: center;">සිසුන් ඇතුළත් කර නැත.</div>
+            </div>
+        </div>
+
+        <div class="section-box">
+            <label>👥 WhatsApp Group Share පණිවිඩය (අද දින සාරාංශය):</label>
+            <textarea id="bulkOutput"></textarea>
+            <a id="whatsappGroupLink" href="#" target="_blank" class="btn-whatsapp-group">💬 WhatsApp Group එකට එකවර Share කරන්න</a>
+        </div>
+    </div>
+
+    <!-- VIEWER VIEW -->
+    <div id="viewerMainView" style="display: none;">
+        <div class="section-box" style="text-align: center; border-color: #38bdf8;">
+            <h3 style="color: #38bdf8; margin-top: 0;"> දෙමාපියන්ගේ සජීවී පුවරුව </h3>
+            <p id="viewingTeacherLabel" style="font-size: 12px; color: #10b981; font-weight: bold;"></p>
+        </div>
+
+        <div class="section-box">
+            <label>📖 පන්ති ලැයිස්තුව (තෝරා බලන්න):</label>
+            <div class="class-list" id="viewerClassListContainer">
+                <div style="color: #94a3b8; font-size: 12px; text-align: center;">පූරණය වෙමින් පවතී...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- VIEWER CLASS DETAIL VIEW -->
+    <div id="viewerClassDetailView" style="display: none;">
+        <button class="btn back-btn" onclick="goBackToViewerMain()">⬅️ පන්ති ලැයිස්තුවට ආපසු යන්න</button>
+        
+        <div class="viewer-nav">
+            <button class="v-tab active" onclick="switchViewerTab('daily')">📅 අද දින සාරාංශය</button>
+            <button class="v-tab" onclick="switchViewerTab('monthly')">📊 මාසික වාර්තාව (Monthly)</button>
+        </div>
+
+        <!-- Tab 1: Daily Summary -->
+        <div id="vTabDaily" class="v-pane">
+            <div class="summary-card">
+                <h3 id="viewerClassNameTitle" style="color: #38bdf8; margin-top: 0; font-size: 18px;">පන්තිය</h3>
+                <p id="viewerClassMeta" style="font-size: 12px; color: #cbd5e1; margin: 5px 0;"></p>
+                <p id="viewerDateDisplay" style="font-size: 11px; color: #38bdf8; font-weight: bold;"></p>
+            </div>
+
+            <div class="section-box" style="background: linear-gradient(135deg, #0f172a, #1e293b); text-align: center; border: 1px solid #10b981;">
+                <div style="font-size: 13px; color: #10b981; font-weight: bold; margin-bottom: 8px;">📊 අද දින පැමිණීම් සාරාංශය (Live Summary)</div>
+                <div style="display: flex; justify-content: space-around; margin-top: 10px;">
+                    <div>
+                        <span style="font-size: 11px; color: #94a3b8;">මුළු සිසුන්</span>
+                        <h2 id="sumTotal" style="color: #f8fafc; margin: 2px 0;">0</h2>
+                    </div>
+                    <div>
+                        <span style="font-size: 11px; color: #94a3b8;">පැමිණි 🟢</span>
+                        <h2 id="sumPresent" style="color: #10b981; margin: 2px 0;">0</h2>
+                    </div>
+                    <div>
+                        <span style="font-size: 11px; color: #94a3b8;">නොපැමිණි 🔴</span>
+                        <h2 id="sumAbsent" style="color: #ef4444; margin: 2px 0;">0</h2>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-box">
+                <label>📋 සිසුන්ගේ පැමිණීමේ තත්ත්වය (අද දිනට):</label>
+                <div class="student-list" id="viewerStudentListContainer"></div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Monthly Report -->
+        <div id="vTabMonthly" class="v-pane" style="display: none;">
+            <div class="section-box">
+                <label>📅 මාසය තෝරන්න (Select Month):</label>
+                <input type="month" id="reportMonthInput" onchange="calculateMonthlyRecord()">
+
+                <label>👤 සිසුවා තෝරන්න (Select Student):</label>
+                <select id="reportStudentSelect" onchange="calculateMonthlyRecord()">
+                </select>
+            </div>
+
+            <div class="section-box" style="text-align: center; background: #1e293b; border: 1px solid #38bdf8;">
+                <h3 style="color: #38bdf8; margin-top: 0;">📈 මාසික පැමිණීම් ප්‍රතිඵලය</h3>
+                <div id="monthlyResultDisplay" style="font-size: 16px; color: #f8fafc; padding: 15px;">
+                    සිසුවෙකු සහ මාසයක් තෝරන්න...
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js')
+            .then(() => console.log("Service Worker Registered Successfully"))
+            .catch((err) => console.log("Service Worker Failed", err));
+    }
+
+    const CUSTOM_HOSTED_URL = "https://thewarapperuma.github.io/Teachers/"; 
+    let userRole = ""; 
+    let activeTeacherId = "";
+    let classes = [];
+    let currentClassIndex = null;
+    const todayStr = new Date().toISOString().slice(0,10);
+
+    window.addEventListener('firebase-ready', () => {
+        setTimeout(() => {
+            let splash = document.getElementById('splashScreen');
+            splash.style.opacity = '0';
+            setTimeout(() => { splash.style.display = 'none'; }, 600);
+        }, 1200);
+
+        let savedRole = sessionStorage.getItem("class_sys_role");
+        let savedTeacher = sessionStorage.getItem("class_sys_teacher");
+
+        if (savedRole && savedTeacher) {
+            userRole = savedRole;
+            activeTeacherId = savedTeacher;
+            initSystem();
+            startRealtimeSync();
+        } else {
+            document.getElementById('loginOverlay').style.display = "flex";
+        }
+    });
+
+    window.onload = function() {
+        document.getElementById('attendanceDate').value = todayStr;
+    }
+
+    function switchLoginMode(mode) {
+        let btnA = document.getElementById('tabAdminLogin');
+        let btnV = document.getElementById('tabViewerLogin');
+        let formA = document.getElementById('adminLoginForm');
+        let formV = document.getElementById('viewerLoginForm');
+
+        if(mode === 'admin') {
+            btnA.style.background = "#0284c7";
+            btnV.style.background = "#475569";
+            formA.style.display = "block";
+            formV.style.display = "none";
+        } else {
+            btnV.style.background = "#0284c7";
+            btnA.style.background = "#475569";
+            formV.style.display = "block";
+            formA.style.display = "none";
+        }
+    }
+
+    function verifyAdminLogin() {
+        let tId = document.getElementById('teacherIdInput').value.trim().toLowerCase();
+        let pin = document.getElementById('adminPinInput').value.trim();
+        let err = document.getElementById('pinError');
+
+        if(tId === "" || pin === "") {
+            err.style.display = "block";
+            err.textContent = "⚠️ කරුණාකර Teacher ID සහ PIN අංකය දෙකම දෙන්න!";
+            return;
+        }
+
+        // Demo PIN validation (ඔබට අවශ්‍ය නම් Firebase එකෙන් පින් අංක චෙක් කරන්න හදාගන්න පුළුවන්, මෙහිදී 2026 යොදා ඇත)
+        if(pin === "2026") {
+            userRole = "admin";
+            activeTeacherId = tId;
+            sessionStorage.setItem("class_sys_role", "admin");
+            sessionStorage.setItem("class_sys_teacher", tId);
+            initSystem();
+            startRealtimeSync();
+        } else {
+            err.style.display = "block";
+            err.textContent = "⚠️ වැරදි මුරපදයක්!";
+        }
+    }
+
+    function verifyViewerLogin() {
+        let tId = document.getElementById('searchTeacherIdInput').value.trim().toLowerCase();
+        let err = document.getElementById('pinError');
+
+        if(tId === "") {
+            err.style.display = "block";
+            err.textContent = "⚠️ කරුණාකර Teacher ID එකක් ඇතුළත් කරන්න!";
+            return;
+        }
+
+        userRole = "viewer";
+        activeTeacherId = tId;
+        sessionStorage.setItem("class_sys_role", "viewer");
+        sessionStorage.setItem("class_sys_teacher", tId);
+   initSystem();
+        startRealtimeSync();
+    }
+
+    function logoutSystem() {
+        sessionStorage.clear();
+        window.location.reload();
+    }
+
+    function startRealtimeSync() {
+        const dbRefAll = window.dbRef(window.db, 'teachers/' + activeTeacherId + '/classes');
+        window.dbOnValue(dbRefAll, (snapshot) => {
+            const data = snapshot.val();
+            classes = data ? data : [];
+            
+            if (userRole === "admin") {
+                renderAdminClasses();
+                if (currentClassIndex !== null && classes[currentClassIndex]) {
+                    renderAdminStudents();
+                    generateGroupMessage();
+                }
+            } else if (userRole === "viewer") {
+                renderViewerClasses();
+                if (currentClassIndex !== null && classes[currentClassIndex]) {
+                    renderViewerDailyAttendance();
+                    calculateMonthlyRecord();
+                }
+            }
+        });
+    }
+
+    function initSystem() {
+        document.getElementById('loginOverlay').style.display = "none";
+        document.getElementById('mainContainer').style.display = "block";
+
+        document.getElementById('adminMainView').style.display = "none";
+        document.getElementById('adminClassDetailView').style.display = "none";
+        document.getElementById('viewerMainView').style.display = "none";
+        document.getElementById('viewerClassDetailView').style.display = "none";
+
+        if (userRole === "admin") {
+            document.getElementById('roleSubtitle').textContent = "ගුරුවරයාගේ කළමනාකරණ මධ්‍යස්ථානය (Admin Mode)";
+            document.getElementById('activeTeacherDisplay').textContent = activeTeacherId;
+            document.getElementById('adminMainView').style.display = "block";
+            renderAdminClasses();
+        } else {
+            document.getElementById('roleSubtitle').textContent = "දෙමාපියන්ගේ සාරාංශ නරඹන මධ්‍යස්ථානය (Viewer Mode)";
+            document.getElementById('viewingTeacherLabel').textContent = "ගුරු හැඳුනුම් අංකය: " + activeTeacherId;
+            document.getElementById('viewerMainView').style.display = "block";
+            renderViewerClasses();
+        }
+    }
+
+    function saveToCloud() {
+        window.dbSet(window.dbRef(window.db, 'teachers/' + activeTeacherId + '/classes'), classes);
+    }
+
+    function addClass() {
+        let name = document.getElementById('classNameInput').value.trim();
+        if (name === "") { alert("පන්තියේ නම ඇතුළත් කරන්න!"); return; }
+        classes.push({ name: name, teacher: "", subject: "English", students: [], attendanceRecords: {} });
+        saveToCloud();
+        document.getElementById('classNameInput').value = "";
+    }
+
+    function renderAdminClasses() {
+        let container = document.getElementById('adminClassListContainer');
+        if (classes.length === 0) {
+            container.innerHTML = '<div style="color: #94a3b8; font-size: 12px; text-align: center;">තවම පන්ති එකතු කර නැත.</div>';
+            return;
+        }
+        container.innerHTML = "";
+        classes.forEach((cls, index) => {
+            let card = document.createElement('div');
+            card.className = "class-card";
+            card.innerHTML = `<span>📖 <b>${cls.name}</b> (${cls.teacher || 'ගුරුතුමා නැත'})</span> <span style="font-size:12px; color:#38bdf8;">සිසුන්: ${cls.students ? cls.students.length : 0} ➔</span>`;
+            card.onclick = () => openAdminClass(index);
+            container.appendChild(card);
+        });
+    }
+
+    function openAdminClass(index) {
+        currentClassIndex = index;
+        let cls = classes[index];
+        document.getElementById('adminMainView').style.display = "none";
+        document.getElementById('adminClassDetailView').style.display = "block";
+        document.getElementById('adminSelectedClassTitle').textContent = "පන්තිය: " + cls.name;
+        document.getElementById('teacherNameInput').value = cls.teacher || "";
+        document.getElementById('subjectInput').value = cls.subject || "English";
+        
+        if(!cls.attendanceRecords) cls.attendanceRecords = {};
+        if(!cls.students) cls.students = [];
+
+        renderAdminStudents();
+        generateGroupMessage();
+    }
+
+    function loadAttendanceForDate() {
+        renderAdminStudents();
+        generateGroupMessage();
+    }
+
+    function goBackToAdminMain() {
+        currentClassIndex = null;
+        document.getElementById('adminClassDetailView').style.display = "none";
+        document.getElementById('adminMainView').style.display = "block";
+        renderAdminClasses();
+    }
+
+    function updateClassDetails() {
+        if (currentClassIndex === null) return;
+        classes[currentClassIndex].teacher = document.getElementById('teacherNameInput').value;
+        classes[currentClassIndex].subject = document.getElementById('subjectInput').value;
+        saveToCloud();
+        generateGroupMessage();
+    }
+
+    function addStudent() {
+        let name = document.getElementById('studentNameInput').value.trim();
+        let phone = document.getElementById('parentPhoneInput').value.trim();
+        if (name === "" || phone === "") { alert("නම සහ අංකය දෙකම ඇතුළත් කරන්න!"); return; }
+        
+        if(!classes[currentClassIndex].students) classes[currentClassIndex].students = [];
+        classes[currentClassIndex].students.push({ name, phone });
+        saveToCloud();
+        document.getElementById('studentNameInput').value = "";
+        document.getElementById('parentPhoneInput').value = "";
+    }
+
+    function removeStudent(i) {
+        if (confirm("මෙම සිසුවාව ඉවත් කිරීමට අවශ්‍යමද?")) {
+            classes[currentClassIndex].students.splice(i, 1);
+            saveToCloud();
+        }
+    }
+
+    function renderAdminStudents() {
+        let container = document.getElementById('adminStudentListContainer');
+        let cls = classes[currentClassIndex];
+        let students = cls.students || [];
+        let selectedDate = document.getElementById('attendanceDate').value;
+
+        if (students.length === 0) {
+            container.innerHTML = '<div style="color: #94a3b8; font-size: 12px; text-align: center;">සිසුන් ඇතුළත් කර නැත.</div>';
+            return;
+        }
+
+        if (!cls.attendanceRecords[selectedDate]) {
+            cls.attendanceRecords[selectedDate] = {};
+        }
+
+        container.innerHTML = "";
+        students.forEach((stu, index) => {
+            let isPresent = !!cls.attendanceRecords[selectedDate][stu.name];
+            let row = document.createElement('div');
+            row.className = "student-row";
+            row.innerHTML = `
+                <div>
+                    <b>${index + 1}. ${stu.name}</b> (${stu.phone})<br>
+                    <label style="font-size:11px; cursor:pointer; color:${isPresent ? '#10b981' : '#ef4444'}; margin-top:4px; display:inline-block;">
+                        <input type="checkbox" ${isPresent ? 'checked' : ''} onchange="toggleAttendance('${stu.name}', this.checked)"> 
+                        ${isPresent ? 'පැමිණ ඇත' : 'පැමිණ නැත'}
+                    </label>
+                </div>
+                <button class="btn btn-danger" onclick="removeStudent(${index})">❌ ඉවත්</button>
+            `;
+            container.appendChild(row);
+        });
+    }
+
+    function toggleAttendance(studentName, isChecked) {
+        let cls = classes[currentClassIndex];
+        let selectedDate = document.getElementById('attendanceDate').value;
+        if (!cls.attendanceRecords[selectedDate]) {
+            cls.attendanceRecords[selectedDate] = {};
+        }
+        cls.attendanceRecords[selectedDate][studentName] = isChecked;
+        saveToCloud();
+        generateGroupMessage();
+    }
+
+    function generateGroupMessage() {
+        if (currentClassIndex === null) return;
+        let cls = classes[currentClassIndex];
+        let students = cls.students || [];
+        let selectedDate = document.getElementById('attendanceDate').value;
+        let teacher = cls.teacher || "ගුරුවරයා";
+        let subject = cls.subject || "English";
+
+        if (!cls.attendanceRecords[selectedDate]) {
+            cls.attendanceRecords[selectedDate] = {};
+        }
+
+        let total = students.length;
+        let present = students.filter(s => !!cls.attendanceRecords[selectedDate][s.name]).length;
+        let absent = total - present;
+
+        let outputText = `📚 *පන්ති පැමිණීම් වාර්තාව* 📚\n`;
+        outputText += `පන්තිය: ${cls.name}\n`;
+        outputText += `විෂය: ${subject}\n`;
+        outputText += `ගුරුවරයා: ${teacher}\n`;
+        outputText += `දිනය: ${selectedDate}\n`;
+        outputText += `=====================\n\n`;
+
+        students.forEach((stu, index) => {
+            let isP = !!cls.attendanceRecords[selectedDate][stu.name];
+            let status = isP ? "✅ පැමිණ ඇත" : "❌ පැමිණ නැත";
+            outputText += `${index + 1}) *${stu.name}* - ${status}\n`;
+        });
+
+        outputText += `\n📊 *සාරාංශය (Summary):*\n`;
+        outputText += `• මුළු සිසුන්: ${total}\n`;
+        outputText += `• පැමිණි ගණන: ${present}\n`;
+        outputText += `• නොපැමිණි ගණන: ${absent}\n`;
+        outputText += `=========================\n`;
+        outputText += `🔗 සජීවී සාරාංශය බැලීමට: ${CUSTOM_HOSTED_URL}`;
+
+        document.getElementById('bulkOutput').value = outputText;
+        let waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(outputText)}`;
+        document.getElementById('whatsappGroupLink').href = waUrl;
+    }
+
+    /* --- VIEWER FUNCTIONS --- */
+    function renderViewerClasses() {
+        let container = document.getElementById('viewerClassListContainer');
+        if (classes.length === 0) {
+            container.innerHTML = '<div style="color: #94a3b8; font-size: 12px; text-align: center;">මෙම Teacher ID එක යටතේ පන්ති හමුවී නැත. ID එක පරීක්ෂා කරන්න.</div>';
+            return;
+        }
+        container.innerHTML = "";
+        classes.forEach((cls, index) => {
+            let card = document.createElement('div');
+            card.className = "class-card";
+            card.innerHTML = `<span>📖 <b>${cls.name}</b> (${cls.teacher || 'ගුරුතුමා නැත'})</span> <span style="font-size:12px; color:#38bdf8;">සාරාංශය බලන්න ➔</span>`;
+            card.onclick = () => openViewerClass(index);
+            container.appendChild(card);
+        });
+    }
+
+    function openViewerClass(index) {
+        currentClassIndex = index;
+        let cls = classes[index];
+        document.getElementById('viewerMainView').style.display = "none";
+        document.getElementById('viewerClassDetailView').style.display = "block";
+        document.getElementById('viewerClassNameTitle').textContent = "පන්තිය: " + cls.name;
+        document.getElementById('viewerClassMeta').textContent = `ගුරුවරයා: ${cls.teacher || 'නැත'} | විෂය: ${cls.subject}`;
+        document.getElementById('viewerDateDisplay').textContent = `අද දින (Date): ${todayStr}`;
+
+        switchViewerTab('daily');
+        renderViewerDailyAttendance();
+        setupMonthlyTab();
+    }
+
+    function switchViewerTab(tabType) {
+        let btnDaily = document.querySelectorAll('.v-tab')[0];
+        let btnMonthly = document.querySelectorAll('.v-tab')[1];
+        let paneDaily = document.getElementById('vTabDaily');
+        let paneMonthly = document.getElementById('vTabMonthly');
+
+        if(tabType === 'daily') {
+            btnDaily.classList.add('active');
+            btnMonthly.classList.remove('active');
+            paneDaily.style.display = 'block';
+            paneMonthly.style.display = 'none';
+        } else {
+            btnMonthly.classList.add('active');
+            btnDaily.classList.remove('active');
+            paneMonthly.style.display = 'block';
+            paneDaily.style.display = 'none';
+            calculateMonthlyRecord();
+        }
+    }
+
+    function renderViewerDailyAttendance() {
+        if(currentClassIndex === null) return;
+        let cls = classes[currentClassIndex];
+        if(!cls.attendanceRecords) cls.attendanceRecords = {};
+        let todayRecord = cls.attendanceRecords[todayStr] || {};
+        let students = cls.students || [];
+
+        let total = students.length;
+        let present = students.filter(s => !!todayRecord[s.name]).length;
+        let absent = total - present;
+
+        document.getElementById('sumTotal').textContent = total;
+        document.getElementById('sumPresent').textContent = present;
+        document.getElementById('sumAbsent').textContent = absent;
+
+        let container = document.getElementById('viewerStudentListContainer');
+        if (total === 0) {
+            container.innerHTML = '<div style="color: #94a3b8; font-size: 12px; text-align: center;">සිසුන් ඇතුළත් කර නැත.</div>';
+            return;
+        }
+
+        container.innerHTML = "";
+        students.forEach((stu, i) => {
+            let isP = !!todayRecord[stu.name];
+            let row = document.createElement('div');
+            row.className = "student-row";
+            row.innerHTML = `
+                <div><b>${i + 1}. ${stu.name}</b></div>
+                <div class="${isP ? 'status-blink-green' : 'status-blink-red'}">
+                    ${isP ? '🟢 පැමිණ ඇත' : '🔴 පැමිණ නැත'}
+                </div>
+            `;
+            container.appendChild(row);
+        });
+    }
+
+    function setupMonthlyTab() {
+        let cls = classes[currentClassIndex];
+        let select = document.getElementById('reportStudentSelect');
+        select.innerHTML = "";
+        if(cls.students) {
+            cls.students.forEach(stu => {
+                let opt = document.createElement('option');
+                opt.value = stu.name;
+                opt.textContent = stu.name;
+                select.appendChild(opt);
+            });
+        }
+        document.getElementById('reportMonthInput').value = todayStr.substring(0, 7);
+    }
+
+    function calculateMonthlyRecord() {
+        if(currentClassIndex === null) return;
+        let cls = classes[currentClassIndex];
+        let targetMonth = document.getElementById('reportMonthInput').value; 
+        let targetStudent = document.getElementById('reportStudentSelect').value;
+        let displayBox = document.getElementById('monthlyResultDisplay');
+
+        if (!targetMonth || !targetStudent) {
+            displayBox.innerHTML = "කරුණාකර මාසය සහ සිසුවා තෝරන්න.";
+            return;
+        }
+
+        if (!cls.attendanceRecords) cls.attendanceRecords = {};
+
+        let totalClassDaysInMonth = 0;
+        let attendedDays = 0;
+
+        Object.keys(cls.attendanceRecords).forEach(dateKey => {
+            if (dateKey.startsWith(targetMonth)) {
+                totalClassDaysInMonth++;
+                if (cls.attendanceRecords[dateKey][targetStudent]) {
+                    attendedDays++;
+                }
+            }
+        });
+
+        if (totalClassDaysInMonth === 0) {
+            displayBox.innerHTML = `<b>${targetMonth}</b> මාසය තුළ මෙම පන්තිය සඳහා වාර්තා සටහන් කර නොමැත.`;
+            return;
+        }
+
+        let percentage = Math.round((attendedDays / totalClassDaysInMonth) * 100);
+        displayBox.innerHTML = `
+            👤 සිසුවා: <b>${targetStudent}</b><br>
+            📅 අදාළ මාසය: <b>${targetMonth}</b><br>
+            📚 මුළු පන්ති පැවති දින: <b>${totalClassDaysInMonth}</b> දිනයි<br>
+            🟢 පැමිණි දින ගණන: <b style="color: #10b981; font-size: 20px;">${attendedDays}</b> දිනයි<br>
+            <span style="font-size: 11px; color: #94a3b8; margin-top: 5px; display:block;">(මෙම මාසයේ පැමිණීමේ ප්‍රතිශතය: ${percentage}%)</span>
+        `;
+    }
+
+    function goBackToViewerMain() {
+        currentClassIndex = null;
+        document.getElementById('viewerClassDetailView').style.display = "none";
+        document.getElementById('viewerMainView').style.display = "block";
+        renderViewerClasses();
+    }
+</script>
+
+</body>
+</html><!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title></title>
+</head>
+
+<body>
+  
+</body>
+
+</html>
